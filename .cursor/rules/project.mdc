@@ -1,0 +1,25 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+
+# project description
+
+this is a clone of azure devops wiki, which is cool because we can use git commit the changes and push them back to the real devops
+
+- markdown files and folders make the wiki structure
+- ordering of subfolders and files can optionally be customized in a file called `.order`.
+- If files or folder in the dir a missing from `.order`, they are added
+- Check `..\Aurora.wiki\` for real world example of a wiki
+- Tree style navivation on the left of the page
+- WSIWYG md editing
+- Images get uploaded to project root, `.attachments` and linked like this `![image.png](/.attachments/image-1a2e3d6c-b2b7-4e32-827c-3da5bf7d212f.png)`
+
+
+## tech 
+
+- nodejs express local server
+- typescript vite react frontend
+- config file with the loaded project path `..\Aurora.wiki\`
