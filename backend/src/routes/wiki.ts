@@ -31,7 +31,13 @@ router.get('/page/*', async (req, res) => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
-    const pagePath = req.params[0];
+    let pagePath = req.params[0];
+    
+    // Add .md extension if not present
+    if (!pagePath.endsWith('.md')) {
+      pagePath = `${pagePath}.md`;
+    }
+    
     const fullPath = path.join(wikiPath, pagePath);
 
     if (!fs.existsSync(fullPath)) {
