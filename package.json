@@ -4,10 +4,10 @@
   "description": "A clone of Azure DevOps Wiki with enhanced features",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
     "dev:backend": "tsx watch backend/src/server.ts",
     "dev:frontend": "vite --config frontend/vite.config.ts",
-    "build": "npm run build:frontend && npm run build:backend",
+    "build": "pnpm run build:frontend && pnpm run build:backend",
     "build:backend": "tsc --project backend/tsconfig.json",
     "build:frontend": "tsc --project frontend/tsconfig.json && vite build --config frontend/vite.config.ts",
     "start": "node backend/dist/server.js",
