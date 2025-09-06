@@ -1,0 +1,10 @@
+---
+globs: *.css
+alwaysApply: false
+---
+
+# style rules
+
+- Prefer our own tailwind classes over hardcoded color values. Check the tailwind css file base block for what is available. Example: `bg-background text-foreground`.
+- Use utility classes from tailwind css file if available. Example: `<button className="btn btn-primary">`
+- Add utility classes in the tailwind css file for things that occur many times

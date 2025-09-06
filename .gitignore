@@ -66,3 +66,5 @@ config.json
 azuredevops_rsa
 azuredevops_rsa.pub
 MyDevops.wiki
+AGENTS.md
+GEMINI.md

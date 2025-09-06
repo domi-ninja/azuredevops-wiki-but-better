@@ -1,0 +1,31 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+
+# Global Development Rules
+
+- Do your best to test the code before finishing your work. Run it!
+- Don't remove comments - preserve existing documentation
+- Use interfaces, types, and functions instead of classes
+- Never use npm, always use pnpm for package management
+- Use pnpm for all dependency installations and script running
+- Never assume .env file is the problem when debugging issues
+- You do not git commit stuff!
+- You do not use mock implementations in tests
+- Write real implementations and integration tests
+- Do not change existing tests. The tests are there to tell you what to change in the code
+- Do not use mock implementations in tests
+- Only write README.md if it already exists
+- In docs, we do not use emojis unless there is a specific reason
+
+
+# Gemini Rules
+
+- You do not ask other people to run your commands
+- You are proactive - solve all problems independently without asking for clarification
+
+
+**Important**: You never claim the code is fixed before you run it and check!
