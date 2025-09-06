@@ -1,10 +1,29 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { AttachmentFile, FileUploadResult, WikiConfig, WikiPage, WikiStructure } from '../types/wiki';
 
 const api = axios.create({
   baseURL: '/api',
   timeout: 10000,
 });
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+  response => response,
+  (error: AxiosError) => {
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Request timeout - the server took too long to respond');
+    }
+    
+    if (!error.response) {
+      // Network error or backend is down
+      throw new Error('Cannot connect to backend server. Please ensure the server is running.');
+    }
+    
+    // Server responded with error
+    const message = (error.response.data as any)?.error || error.message;
+    throw new Error(message);
+  }
+);
 
 // Wiki Structure
 export async function getWikiStructure(): Promise<WikiStructure> {

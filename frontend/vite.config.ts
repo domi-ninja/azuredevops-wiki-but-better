@@ -24,5 +24,7 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  // Ensure client-side routing works on production builds
+  appType: 'spa'
 })

@@ -2,6 +2,7 @@ import { FileText, Home, Settings } from 'lucide-react';
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWiki } from '../contexts/WikiContext';
+import ConnectionStatus from './ConnectionStatus';
 import ErrorBoundary from './ErrorBoundary';
 import Sidebar from './Sidebar';
 
@@ -68,6 +69,9 @@ export default function Layout({ children }: LayoutProps) {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Connection Status Indicator */}
+      <ConnectionStatus />
     </div>
   );
 }
