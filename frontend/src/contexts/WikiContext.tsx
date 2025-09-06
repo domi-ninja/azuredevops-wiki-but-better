@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
 import * as wikiApi from '../services/api';
 import { WikiConfig, WikiPage, WikiStructure } from '../types/wiki';
 
@@ -64,7 +64,7 @@ const WikiContext = createContext<WikiContextType | undefined>(undefined);
 export function WikiProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(wikiReducer, initialState);
 
-  const loadStructure = async () => {
+  const loadStructure = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const structure = await wikiApi.getWikiStructure();
@@ -72,9 +72,9 @@ export function WikiProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to load wiki structure' });
     }
-  };
+  }, []);
 
-  const loadPage = async (path: string) => {
+  const loadPage = useCallback(async (path: string) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const page = await wikiApi.getPage(path);
@@ -82,9 +82,9 @@ export function WikiProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to load page' });
     }
-  };
+  }, []);
 
-  const savePage = async (path: string, content: string, metadata?: Record<string, any>) => {
+  const savePage = useCallback(async (path: string, content: string, metadata?: Record<string, any>) => {
     try {
       await wikiApi.savePage(path, content, metadata);
       // Reload the page to get updated content
@@ -93,9 +93,9 @@ export function WikiProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to save page' });
       throw error;
     }
-  };
+  }, [loadPage]);
 
-  const createPage = async (path: string, title: string, content = '') => {
+  const createPage = useCallback(async (path: string, title: string, content = '') => {
     try {
       await wikiApi.createPage(path, title, content);
       // Reload structure to show new page
@@ -104,9 +104,9 @@ export function WikiProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to create page' });
       throw error;
     }
-  };
+  }, [loadStructure]);
 
-  const deletePage = async (path: string) => {
+  const deletePage = useCallback(async (path: string) => {
     try {
       await wikiApi.deletePage(path);
       // Reload structure to remove deleted page
@@ -119,9 +119,9 @@ export function WikiProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to delete page' });
       throw error;
     }
-  };
+  }, [loadStructure, state.currentPage?.path]);
 
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const config = await wikiApi.getConfig();
@@ -129,9 +129,9 @@ export function WikiProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to load configuration' });
     }
-  };
+  }, []);
 
-  const updateConfig = async (configUpdate: Partial<WikiConfig>) => {
+  const updateConfig = useCallback(async (configUpdate: Partial<WikiConfig>) => {
     try {
       const config = await wikiApi.updateConfig(configUpdate);
       dispatch({ type: 'SET_CONFIG', payload: config });
@@ -139,28 +139,41 @@ export function WikiProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to update configuration' });
       throw error;
     }
-  };
+  }, []);
 
-  const setEditing = (editing: boolean) => {
+  const setEditing = useCallback((editing: boolean) => {
     dispatch({ type: 'SET_EDITING', payload: editing });
-  };
+  }, []);
 
   // Load initial data
   useEffect(() => {
     loadConfig();
-  }, []);
+  }, [loadConfig]);
 
-  const contextValue: WikiContextType = {
-    state,
-    loadStructure,
-    loadPage,
-    savePage,
-    createPage,
-    deletePage,
-    loadConfig,
-    updateConfig,
-    setEditing,
-  };
+  const contextValue: WikiContextType = useMemo(
+    () => ({
+      state,
+      loadStructure,
+      loadPage,
+      savePage,
+      createPage,
+      deletePage,
+      loadConfig,
+      updateConfig,
+      setEditing,
+    }),
+    [
+      state,
+      loadStructure,
+      loadPage,
+      savePage,
+      createPage,
+      deletePage,
+      loadConfig,
+      updateConfig,
+      setEditing,
+    ]
+  );
 
   return (
     <WikiContext.Provider value={contextValue}>
