@@ -63,3 +63,6 @@ jspm_packages/
 
 # Local config (will be created automatically)
 config.json
+azuredevops_rsa
+azuredevops_rsa.pub
+MyDevops.wiki
