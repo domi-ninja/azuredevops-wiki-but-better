@@ -5,7 +5,6 @@ alwaysApply: true
 
 - In frontends, we do not use emojis, we use icons from an icon library
 - We do not hardcode routes in SPAs. If we need routes, we properly add a router.
-- Never use classes in TypeScript/JavaScript - prefer functional programming patterns
 
 # style rules
 

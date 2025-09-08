@@ -1,0 +1,5 @@
+# Typescript rules
+
+- Never use return types on Typescript functions!
+- Do not use classes in TypeScript/JavaScript - prefer functional programming patterns
+
