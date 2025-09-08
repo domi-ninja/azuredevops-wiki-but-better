@@ -1,14 +1,15 @@
-import { Calendar, Edit, FileText } from 'lucide-react';
+import { Calendar, Edit, FileText, Trash2 } from 'lucide-react';
 import { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { useWiki } from '../contexts/WikiContext';
 
 export default function WikiPage() {
   const { '*': pagePath } = useParams();
-  const { state, loadPage } = useWiki();
+  const navigate = useNavigate();
+  const { state, loadPage, deletePage } = useWiki();
 
   useEffect(() => {
     if (pagePath) {
@@ -81,13 +82,34 @@ export default function WikiPage() {
             </div>
           </div>
           
-          <Link
-            to={`/edit/${currentPage.path}`}
-            className="btn-primary flex items-center space-x-2"
-          >
-            <Edit className="h-4 w-4" />
-            <span>Edit</span>
-          </Link>
+          <div className="flex items-center space-x-2">
+            <Link
+              to={`/edit/${currentPage.path}`}
+              className="btn-primary flex items-center space-x-2"
+            >
+              <Edit className="h-4 w-4" />
+              <span>Edit</span>
+            </Link>
+            <button
+              onClick={async () => {
+                if (!currentPage?.path) return;
+                const confirmed = window.confirm('Delete this page? This action cannot be undone.');
+                if (!confirmed) return;
+                try {
+                  await deletePage(currentPage.path);
+                  navigate('/');
+                } catch (err) {
+                  // handled in context; keep console for dev
+                  // eslint-disable-next-line no-console
+                  console.error('Failed to delete page', err);
+                }
+              }}
+              className="btn-secondary flex items-center space-x-2 text-red-700 hover:text-red-800"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Delete</span>
+            </button>
+          </div>
         </div>
       </header>
 

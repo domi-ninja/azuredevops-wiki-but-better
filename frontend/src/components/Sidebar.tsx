@@ -1,12 +1,13 @@
 import { ChevronDown, ChevronRight, File, Folder, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useWiki } from '../contexts/WikiContext';
 import { WikiStructure } from '../types/wiki';
 
 export default function Sidebar() {
-  const { state, loadStructure } = useWiki();
+  const { state, loadStructure, createPage } = useWiki();
   const location = useLocation();
+  const navigate = useNavigate();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -121,7 +122,19 @@ export default function Sidebar() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Wiki Pages</h2>
           <button
-            onClick={() => {/* TODO: Add new page functionality */}}
+            onClick={async () => {
+              const pathInput = window.prompt('Enter new page path (e.g. folder/MyPage):');
+              if (!pathInput) return;
+              const titleInput = window.prompt('Enter page title:') || pathInput.split('/').pop() || 'Untitled';
+              try {
+                await createPage(pathInput, titleInput, `# ${titleInput}\n\n`);
+                navigate(`/edit/${pathInput}`);
+              } catch (err) {
+                // Error is handled in context; optional console for devs
+                // eslint-disable-next-line no-console
+                console.error('Failed to create page', err);
+              }
+            }}
             className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
             title="New Page"
           >

@@ -9,6 +9,30 @@ import { WikiPage, WikiStructure } from '../types/wiki.js';
 
 const router = express.Router();
 
+// Ensure page paths are safe and normalized to .md files within the wiki directory
+function resolveSafePageFullPath(wikiRoot: string, rawPagePath: string): { pagePath: string; fullPath: string } {
+  let pagePath = rawPagePath.trim();
+
+  // Normalize separators and remove leading slashes to keep it relative
+  pagePath = pagePath.replace(/\\/g, '/').replace(/^\/+/, '');
+
+  // Force .md extension
+  if (!pagePath.endsWith('.md')) {
+    pagePath = `${pagePath}.md`;
+  }
+
+  // Build and normalize the absolute full path
+  const tentative = path.normalize(path.join(wikiRoot, pagePath));
+
+  // Ensure the resolved path is within the wiki root (prevent traversal)
+  const normalizedRoot = path.normalize(wikiRoot + path.sep);
+  if (!tentative.startsWith(normalizedRoot)) {
+    throw new Error('Invalid path');
+  }
+
+  return { pagePath, fullPath: tentative };
+}
+
 // Get wiki structure (folders and files)
 const getStructureHandler = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -35,14 +59,9 @@ const getPageHandler = async (req: Request, res: Response): Promise<void> => {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
     const wildcardParams = req.params as unknown as { 0?: string };
-    let pagePath = wildcardParams[0] || '';
-    
-    // Add .md extension if not present
-    if (!pagePath.endsWith('.md')) {
-      pagePath = `${pagePath}.md`;
-    }
-    
-    const fullPath = path.join(wikiPath, pagePath);
+    const rawPagePath = wildcardParams[0] || '';
+
+    const { pagePath, fullPath } = resolveSafePageFullPath(wikiPath, rawPagePath);
 
     if (!fs.existsSync(fullPath)) {
       res.status(404).json({ error: 'Page not found' });
@@ -75,8 +94,8 @@ const putPageHandler = async (req: Request, res: Response): Promise<void> => {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
     const wildcardParams = req.params as unknown as { 0?: string };
-    const pagePath = wildcardParams[0] || '';
-    const fullPath = path.join(wikiPath, pagePath);
+    const rawPagePath = wildcardParams[0] || '';
+    const { pagePath, fullPath } = resolveSafePageFullPath(wikiPath, rawPagePath);
     const { content, metadata } = req.body;
 
     // Ensure directory exists
@@ -99,8 +118,8 @@ const postPageHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
-    const { path: pagePath, title, content } = req.body;
-    const fullPath = path.join(wikiPath, pagePath);
+    const { path: rawPagePath, title, content } = req.body as { path: string; title?: string; content?: string };
+    const { pagePath, fullPath } = resolveSafePageFullPath(wikiPath, rawPagePath || '');
 
     if (fs.existsSync(fullPath)) {
       res.status(409).json({ error: 'Page already exists' });
@@ -127,8 +146,8 @@ const deletePageHandler = async (req: Request, res: Response): Promise<void> => 
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
     const wildcardParams = req.params as unknown as { 0?: string };
-    const pagePath = wildcardParams[0] || '';
-    const fullPath = path.join(wikiPath, pagePath);
+    const rawPagePath = wildcardParams[0] || '';
+    const { fullPath } = resolveSafePageFullPath(wikiPath, rawPagePath);
 
     if (!fs.existsSync(fullPath)) {
       res.status(404).json({ error: 'Page not found' });
