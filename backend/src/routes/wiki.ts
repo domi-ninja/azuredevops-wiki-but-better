@@ -1,3 +1,4 @@
+import type { Request, Response } from 'express';
 import express from 'express';
 import fs from 'fs-extra';
 import matter from 'gray-matter';
@@ -9,13 +10,14 @@ import { WikiPage, WikiStructure } from '../types/wiki.js';
 const router = express.Router();
 
 // Get wiki structure (folders and files)
-router.get('/structure', async (req, res) => {
+const getStructureHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
     
     if (!fs.existsSync(wikiPath)) {
-      return res.status(404).json({ error: 'Wiki path not found' });
+      res.status(404).json({ error: 'Wiki path not found' });
+      return;
     }
 
     const structure = await buildWikiStructure(wikiPath);
@@ -24,14 +26,16 @@ router.get('/structure', async (req, res) => {
     console.error('Error getting wiki structure:', error);
     res.status(500).json({ error: 'Failed to get wiki structure' });
   }
-});
+};
+router.get('/structure', getStructureHandler);
 
 // Get page content
-router.get('/page/*', async (req, res) => {
+const getPageHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
-    let pagePath = req.params[0];
+    const wildcardParams = req.params as unknown as { 0?: string };
+    let pagePath = wildcardParams[0] || '';
     
     // Add .md extension if not present
     if (!pagePath.endsWith('.md')) {
@@ -41,7 +45,8 @@ router.get('/page/*', async (req, res) => {
     const fullPath = path.join(wikiPath, pagePath);
 
     if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({ error: 'Page not found' });
+      res.status(404).json({ error: 'Page not found' });
+      return;
     }
 
     const content = await fs.readFile(fullPath, 'utf-8');
@@ -61,14 +66,16 @@ router.get('/page/*', async (req, res) => {
     console.error('Error getting page:', error);
     res.status(500).json({ error: 'Failed to get page' });
   }
-});
+};
+router.get('/page/*', getPageHandler);
 
 // Save page content
-router.put('/page/*', async (req, res) => {
+const putPageHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
-    const pagePath = req.params[0];
+    const wildcardParams = req.params as unknown as { 0?: string };
+    const pagePath = wildcardParams[0] || '';
     const fullPath = path.join(wikiPath, pagePath);
     const { content, metadata } = req.body;
 
@@ -84,10 +91,11 @@ router.put('/page/*', async (req, res) => {
     console.error('Error saving page:', error);
     res.status(500).json({ error: 'Failed to save page' });
   }
-});
+};
+router.put('/page/*', putPageHandler);
 
 // Create new page
-router.post('/page', async (req, res) => {
+const postPageHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
@@ -95,7 +103,8 @@ router.post('/page', async (req, res) => {
     const fullPath = path.join(wikiPath, pagePath);
 
     if (fs.existsSync(fullPath)) {
-      return res.status(409).json({ error: 'Page already exists' });
+      res.status(409).json({ error: 'Page already exists' });
+      return;
     }
 
     await fs.ensureDir(path.dirname(fullPath));
@@ -109,18 +118,21 @@ router.post('/page', async (req, res) => {
     console.error('Error creating page:', error);
     res.status(500).json({ error: 'Failed to create page' });
   }
-});
+};
+router.post('/page', postPageHandler);
 
 // Delete page
-router.delete('/page/*', async (req, res) => {
+const deletePageHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
-    const pagePath = req.params[0];
+    const wildcardParams = req.params as unknown as { 0?: string };
+    const pagePath = wildcardParams[0] || '';
     const fullPath = path.join(wikiPath, pagePath);
 
     if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({ error: 'Page not found' });
+      res.status(404).json({ error: 'Page not found' });
+      return;
     }
 
     await fs.remove(fullPath);
@@ -129,12 +141,13 @@ router.delete('/page/*', async (req, res) => {
     console.error('Error deleting page:', error);
     res.status(500).json({ error: 'Failed to delete page' });
   }
-});
+};
+router.delete('/page/*', deletePageHandler);
 
 async function buildWikiStructure(wikiPath: string, relativePath = ''): Promise<WikiStructure> {
   const items: WikiStructure[] = [];
   const currentPath = path.join(wikiPath, relativePath);
-  
+
   // Read .order file if it exists
   const orderFile = path.join(currentPath, '.order');
   let order: string[] = [];
@@ -143,27 +156,44 @@ async function buildWikiStructure(wikiPath: string, relativePath = ''): Promise<
     order = orderContent.split('\n').map(line => line.trim()).filter(Boolean);
   }
 
-  const entries = await fs.readdir(currentPath, { withFileTypes: true });
-  const allItems = new Set(entries.map(entry => entry.name));
-  
-  // Add ordered items first
-  for (const itemName of order) {
-    if (allItems.has(itemName)) {
-      const entry = entries.find(e => e.name === itemName);
-      if (entry) {
-        const item = await createStructureItem(entry, wikiPath, relativePath);
-        if (item) items.push(item);
-        allItems.delete(itemName);
-      }
+  const entries = (await fs.readdir(currentPath, { withFileTypes: true }))
+    .filter(e => !e.name.startsWith('.'));
+
+  // Group by base name to merge same-named file/folder
+  const baseNameToGroup: Record<string, { baseName: string; dir?: fs.Dirent; file?: fs.Dirent }> = {};
+  for (const entry of entries) {
+    const baseName = entry.isFile() && entry.name.endsWith('.md')
+      ? entry.name.slice(0, -3)
+      : entry.name;
+    if (!baseNameToGroup[baseName]) {
+      baseNameToGroup[baseName] = { baseName };
+    }
+    if (entry.isDirectory()) {
+      baseNameToGroup[baseName].dir = entry;
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      baseNameToGroup[baseName].file = entry;
     }
   }
 
-  // Add remaining items
-  for (const entry of entries) {
-    if (allItems.has(entry.name) && !entry.name.startsWith('.')) {
-      const item = await createStructureItem(entry, wikiPath, relativePath);
-      if (item) items.push(item);
+  const processed = new Set<string>();
+
+  // Respect .order if present; allow entries like "Foo" or "Foo.md"
+  for (const ordered of order) {
+    const baseName = ordered.endsWith('.md') ? ordered.slice(0, -3) : ordered;
+    if (processed.has(baseName)) continue;
+    const group = baseNameToGroup[baseName];
+    if (group) {
+      const merged = await createMergedStructureItem(group, wikiPath, relativePath);
+      if (merged) items.push(merged);
+      processed.add(baseName);
     }
+  }
+
+  // Add remaining items not covered by order
+  for (const [baseName, group] of Object.entries(baseNameToGroup)) {
+    if (processed.has(baseName)) continue;
+    const merged = await createMergedStructureItem(group, wikiPath, relativePath);
+    if (merged) items.push(merged);
   }
 
   return {
@@ -174,28 +204,48 @@ async function buildWikiStructure(wikiPath: string, relativePath = ''): Promise<
   };
 }
 
-async function createStructureItem(
-  entry: fs.Dirent, 
-  wikiPath: string, 
+async function createMergedStructureItem(
+  group: { baseName: string; dir?: fs.Dirent; file?: fs.Dirent },
+  wikiPath: string,
   relativePath: string
 ): Promise<WikiStructure | null> {
-  const itemPath = path.join(relativePath, entry.name);
-  const fullPath = path.join(wikiPath, itemPath);
+  const name = group.baseName;
+  const folderPath = path.join(relativePath, name);
+  const filePathWithExt = path.join(relativePath, `${name}.md`);
+  const fullFilePath = path.join(wikiPath, filePathWithExt);
 
-  if (entry.isDirectory()) {
-    const children = await buildWikiStructure(wikiPath, itemPath);
+  // Both folder and file exist: merge into folder node with pagePath
+  if (group.dir && group.file) {
+    const childrenStructure = await buildWikiStructure(wikiPath, folderPath);
+    const stats = await fs.stat(fullFilePath).catch(() => null);
     return {
-      name: entry.name,
+      name,
       type: 'folder',
-      path: itemPath,
-      children: children.children
+      path: folderPath,
+      children: childrenStructure.children,
+      lastModified: stats ? stats.mtime : undefined,
+      pagePath: filePathWithExt.replace(/\.md$/, '')
     };
-  } else if (entry.isFile() && entry.name.endsWith('.md')) {
-    const stats = await fs.stat(fullPath);
+  }
+
+  // Only folder exists
+  if (group.dir && !group.file) {
+    const childrenStructure = await buildWikiStructure(wikiPath, folderPath);
     return {
-      name: entry.name.replace('.md', ''),
+      name,
+      type: 'folder',
+      path: folderPath,
+      children: childrenStructure.children
+    };
+  }
+
+  // Only file exists
+  if (!group.dir && group.file) {
+    const stats = await fs.stat(fullFilePath);
+    return {
+      name,
       type: 'file',
-      path: itemPath,
+      path: filePathWithExt.replace(/\.md$/, ''),
       lastModified: stats.mtime
     };
   }

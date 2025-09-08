@@ -27,25 +27,39 @@ export default function Sidebar() {
 
   const renderStructureItem = (item: WikiStructure, level = 0) => {
     const isExpanded = expandedFolders.has(item.path);
-    const isCurrentPage = location.pathname === `/wiki/${item.path}`;
+    const effectivePath = item.type === 'folder' && item.pagePath ? item.pagePath : item.path;
+    const isCurrentPage = location.pathname === `/wiki/${effectivePath}`;
     const paddingLeft = `${level * 20 + 12}px`;
 
     if (item.type === 'folder') {
       return (
         <div key={item.path}>
-          <button
-            onClick={() => toggleFolder(item.path)}
-            className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          <div
+            className={`w-full flex items-center px-3 py-2 text-sm transition-colors ${
+              isCurrentPage ? 'bg-primary-100 text-primary-900 border-r-2 border-primary-500' : 'text-gray-700 hover:bg-gray-100'
+            }`}
             style={{ paddingLeft }}
           >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 mr-1" />
-            ) : (
-              <ChevronRight className="h-4 w-4 mr-1" />
-            )}
+            <button
+              onClick={() => toggleFolder(item.path)}
+              className="mr-1 p-0.5 rounded hover:bg-gray-200 text-gray-700"
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
             <Folder className="h-4 w-4 mr-2 text-blue-500" />
-            <span className="truncate">{item.name}</span>
-          </button>
+            {item.pagePath ? (
+              <Link to={`/wiki/${item.pagePath}`} className="truncate">
+                {item.name}
+              </Link>
+            ) : (
+              <span className="truncate">{item.name}</span>
+            )}
+          </div>
           
           {isExpanded && item.children && (
             <div>

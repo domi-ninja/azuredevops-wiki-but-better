@@ -13,6 +13,8 @@ export interface WikiStructure {
   path: string;
   children?: WikiStructure[];
   lastModified?: Date;
+  // If a folder has a same-named markdown file, link to it here (without .md)
+  pagePath?: string;
 }
 
 export interface FileUploadResult {

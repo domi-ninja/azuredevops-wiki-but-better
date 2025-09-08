@@ -1,3 +1,4 @@
+import type { Request, Response } from 'express';
 import express from 'express';
 import fs from 'fs-extra';
 import multer from 'multer';
@@ -26,10 +27,11 @@ const upload = multer({
 });
 
 // Upload file to .attachments
-router.post('/upload', upload.single('file'), async (req, res) => {
+const uploadHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
     }
 
     const config = loadConfig();
@@ -64,17 +66,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     console.error('Error uploading file:', error);
     res.status(500).json({ error: 'Failed to upload file' });
   }
-});
+};
+router.post('/upload', upload.single('file'), uploadHandler);
 
 // List files in .attachments
-router.get('/attachments', async (req, res) => {
+const listAttachmentsHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
     const attachmentsPath = path.join(wikiPath, '.attachments');
 
     if (!fs.existsSync(attachmentsPath)) {
-      return res.json([]);
+      res.json([]);
+      return;
     }
 
     const files = await fs.readdir(attachmentsPath);
@@ -96,10 +100,11 @@ router.get('/attachments', async (req, res) => {
     console.error('Error listing attachments:', error);
     res.status(500).json({ error: 'Failed to list attachments' });
   }
-});
+};
+router.get('/attachments', listAttachmentsHandler);
 
 // Delete attachment
-router.delete('/attachments/:fileName', async (req, res) => {
+const deleteAttachmentHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
     const wikiPath = getAbsoluteWikiPath(config);
@@ -107,7 +112,8 @@ router.delete('/attachments/:fileName', async (req, res) => {
     const filePath = path.join(wikiPath, '.attachments', fileName);
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+      res.status(404).json({ error: 'File not found' });
+      return;
     }
 
     await fs.remove(filePath);
@@ -116,6 +122,7 @@ router.delete('/attachments/:fileName', async (req, res) => {
     console.error('Error deleting attachment:', error);
     res.status(500).json({ error: 'Failed to delete attachment' });
   }
-});
+};
+router.delete('/attachments/:fileName', deleteAttachmentHandler);
 
 export { router as fileRoutes };
