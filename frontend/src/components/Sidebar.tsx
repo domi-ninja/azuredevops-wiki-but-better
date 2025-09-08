@@ -123,12 +123,27 @@ export default function Sidebar() {
           <h2 className="text-sm font-semibold text-gray-900">Wiki Pages</h2>
           <button
             onClick={async () => {
-              const pathInput = window.prompt('Enter new page path (e.g. folder/MyPage):');
-              if (!pathInput) return;
-              const titleInput = window.prompt('Enter page title:') || pathInput.split('/').pop() || 'Untitled';
+              // Derive base path from currently selected wiki page
+              const wikiPrefix = '/wiki/';
+              const currentPath = location.pathname.startsWith(wikiPrefix)
+                ? location.pathname.slice(wikiPrefix.length)
+                : '';
+
+              const titleInput = window.prompt('Enter page title:');
+              if (!titleInput) return;
+
+              const slug = titleInput
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9\s/-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-');
+
+              const nestedBase = currentPath ? `${currentPath}` : '';
+              const newPath = nestedBase ? `${nestedBase}/${slug}` : slug;
               try {
-                await createPage(pathInput, titleInput, `# ${titleInput}\n\n`);
-                navigate(`/edit/${pathInput}`);
+                await createPage(newPath, titleInput, `# ${titleInput}\n\n`);
+                navigate(`/edit/${newPath}`);
               } catch (err) {
                 // Error is handled in context; optional console for devs
                 // eslint-disable-next-line no-console
