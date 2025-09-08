@@ -86,6 +86,25 @@ export default function Sidebar() {
       );
     }
 
+    // Special-case: synthetic .order entry uses file type with name '.order' and path being the folder
+    if (item.name === '.order') {
+      return (
+        <Link
+          key={`order-${item.path}`}
+          to={`/order/${item.path}`}
+          className={`flex items-center px-3 py-2 text-sm transition-colors ${
+            location.pathname === `/order/${item.path}`
+              ? 'bg-primary-100 text-primary-900 border-r-2 border-primary-500'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+          style={{ paddingLeft }}
+        >
+          <File className="h-4 w-4 mr-2 text-gray-400" />
+          <span className="truncate font-mono">.order</span>
+        </Link>
+      );
+    }
+
     return (
       <Link
         key={item.path}
