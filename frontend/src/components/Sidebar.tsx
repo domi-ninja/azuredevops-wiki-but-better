@@ -58,7 +58,22 @@ export default function Sidebar() {
                 {item.name}
               </Link>
             ) : (
-              <span className="truncate">{item.name}</span>
+              <button
+                className="truncate text-left flex-1"
+                title="Create page with same name"
+                onClick={async () => {
+                  try {
+                    const newPath = item.path; // folder path; file will be `${path}.md`
+                    await createPage(newPath, item.name, `# ${item.name}\n\n`);
+                    navigate(`/wiki/${newPath}`);
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.error('Failed to create page for folder', err);
+                  }
+                }}
+              >
+                {item.name}
+              </button>
             )}
           </div>
           
