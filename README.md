@@ -13,7 +13,7 @@ I do not know who programmed this, but it somehow has a runtime of `O(n!)`, wher
 
 - If the `.order` file is incomplete, the web frontend refuses to let users reorder items in the folder until somebody uses git to push a fixed version where the file is either delete or completed. 
 
-To solve these unacceptable bugs and allow me to work with this wiki, I will proceed tgo vibe code a lighweight frontend for it in this repo, clone the azure wiki to a local folder and work with that.
+To solve these unacceptable bugs and allow me to work with this wiki, I will vibe code a lighweight frontend for it in this repo, clone the azure wiki to a local folder and work with that.
 
 In the meantime, you can also just use your text editor, common sense and git and then finish by proof-reading the result on the microsoft web ui for the wiki.
 
