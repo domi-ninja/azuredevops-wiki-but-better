@@ -88,7 +88,7 @@ const getPageHandler = async (req: Request, res: Response): Promise<void> => {
 };
 router.get('/page/*', getPageHandler);
 
-// Save page content
+// Save page content (supports renaming file and matching folder when title changes)
 const putPageHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const config = loadConfig();
@@ -96,22 +96,122 @@ const putPageHandler = async (req: Request, res: Response): Promise<void> => {
     const wildcardParams = req.params as unknown as { 0?: string };
     const rawPagePath = wildcardParams[0] || '';
     const { pagePath, fullPath } = resolveSafePageFullPath(wikiPath, rawPagePath);
-    const { content, metadata } = req.body;
+    const { content, metadata } = req.body as { content: string; metadata?: Record<string, any> };
 
-    // Ensure directory exists
-    await fs.ensureDir(path.dirname(fullPath));
+    const desiredTitle: string | undefined = metadata?.title;
+    const parentDir = path.dirname(fullPath);
+    const oldBaseName = path.basename(fullPath, '.md');
+    let resultingFullPath = fullPath;
 
-    // Create content with frontmatter
+    function slugify(input: string): string {
+      return input
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s\/-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+    }
+
+    if (desiredTitle) {
+      const newBaseName = slugify(desiredTitle);
+      if (newBaseName && newBaseName !== oldBaseName) {
+        const newFilePath = path.join(parentDir, `${newBaseName}.md`);
+
+        if (await fs.pathExists(newFilePath)) {
+          res.status(409).json({ error: 'Target page already exists with the new title' });
+          return;
+        }
+
+        const oldFolderPath = path.join(parentDir, oldBaseName);
+        const newFolderPath = path.join(parentDir, newBaseName);
+        const oldFolderExists = await fs.pathExists(oldFolderPath);
+        const newFolderExists = await fs.pathExists(newFolderPath);
+        if (oldFolderExists && newFolderExists) {
+          res.status(409).json({ error: 'Target folder already exists with the new title' });
+          return;
+        }
+
+        if (oldFolderExists) {
+          await fs.move(oldFolderPath, newFolderPath);
+        }
+
+        await fs.move(fullPath, newFilePath);
+        resultingFullPath = newFilePath;
+      }
+    }
+
+    await fs.ensureDir(path.dirname(resultingFullPath));
+
     const fileContent = matter.stringify(content, metadata || {});
-    await fs.writeFile(fullPath, fileContent);
+    await fs.writeFile(resultingFullPath, fileContent);
 
-    res.json({ success: true, path: pagePath });
+    const resultingRelative = path.relative(wikiPath, resultingFullPath).replace(/\\/g, '/');
+    const resultingPagePath = resultingRelative.replace(/\.md$/, '');
+
+    res.json({ success: true, path: resultingPagePath });
   } catch (error) {
     console.error('Error saving page:', error);
     res.status(500).json({ error: 'Failed to save page' });
   }
 };
 router.put('/page/*', putPageHandler);
+
+// Read .order file for a folder
+const getOrderHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const config = loadConfig();
+    const wikiPath = getAbsoluteWikiPath(config);
+    const wildcardParams = req.params as unknown as { 0?: string };
+    const folderRel = (wildcardParams[0] || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    const folderAbs = path.normalize(path.join(wikiPath, folderRel));
+
+    const normalizedRoot = path.normalize(wikiPath + path.sep);
+    if (!folderAbs.startsWith(normalizedRoot)) {
+      res.status(400).json({ error: 'Invalid path' });
+      return;
+    }
+
+    const orderPath = path.join(folderAbs, '.order');
+    let lines: string[] = [];
+    if (await fs.pathExists(orderPath)) {
+      const content = await fs.readFile(orderPath, 'utf-8');
+      lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+    }
+    res.json({ folderPath: folderRel, lines });
+  } catch (error) {
+    console.error('Error reading .order:', error);
+    res.status(500).json({ error: 'Failed to read .order' });
+  }
+};
+router.get('/order/*', getOrderHandler);
+
+// Write .order file for a folder
+const putOrderHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const config = loadConfig();
+    const wikiPath = getAbsoluteWikiPath(config);
+    const wildcardParams = req.params as unknown as { 0?: string };
+    const folderRel = (wildcardParams[0] || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    const folderAbs = path.normalize(path.join(wikiPath, folderRel));
+    const { lines } = req.body as { lines: string[] };
+
+    const normalizedRoot = path.normalize(wikiPath + path.sep);
+    if (!folderAbs.startsWith(normalizedRoot)) {
+      res.status(400).json({ error: 'Invalid path' });
+      return;
+    }
+
+    await fs.ensureDir(folderAbs);
+    const orderPath = path.join(folderAbs, '.order');
+    const content = (lines || []).join('\n') + (lines?.length ? '\n' : '');
+    await fs.writeFile(orderPath, content, 'utf-8');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error writing .order:', error);
+    res.status(500).json({ error: 'Failed to write .order' });
+  }
+};
+router.put('/order/*', putOrderHandler);
 
 // Create new page
 const postPageHandler = async (req: Request, res: Response): Promise<void> => {
@@ -214,6 +314,14 @@ async function buildWikiStructure(wikiPath: string, relativePath = ''): Promise<
     const merged = await createMergedStructureItem(group, wikiPath, relativePath);
     if (merged) items.push(merged);
   }
+
+  // Add explicit .order entry as the very first item in each folder
+  items.unshift({
+    name: '.order',
+    type: 'file',
+    // Use folder relative path as path to route the order editor
+    path: relativePath,
+  } as WikiStructure);
 
   return {
     name: path.basename(relativePath) || 'Wiki',

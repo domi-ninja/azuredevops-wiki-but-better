@@ -40,8 +40,9 @@ export async function getPage(path: string): Promise<WikiPage> {
   };
 }
 
-export async function savePage(path: string, content: string, metadata?: Record<string, any>): Promise<void> {
-  await api.put(`/wiki/page/${path}`, { content, metadata });
+export async function savePage(path: string, content: string, metadata?: Record<string, any>): Promise<{ success: boolean; path: string }> {
+  const response = await api.put(`/wiki/page/${path}`, { content, metadata });
+  return response.data as { success: boolean; path: string };
 }
 
 export async function createPage(path: string, title: string, content?: string): Promise<void> {
@@ -50,6 +51,16 @@ export async function createPage(path: string, title: string, content?: string):
 
 export async function deletePage(path: string): Promise<void> {
   await api.delete(`/wiki/page/${path}`);
+}
+
+// .order API
+export async function getOrder(folderPath: string): Promise<{ folderPath: string; lines: string[] }> {
+  const response = await api.get(`/wiki/order/${folderPath}`);
+  return response.data;
+}
+
+export async function saveOrder(folderPath: string, lines: string[]): Promise<void> {
+  await api.put(`/wiki/order/${folderPath}`, { lines });
 }
 
 // Files
