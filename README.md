@@ -1,3 +1,5 @@
+# vibe coding is WIP, do not use this yet :) 
+
 # DevOps Wiki Better
 
 A modern, enhanced clone of Azure DevOps Wiki with improved editing capabilities and user experience.
