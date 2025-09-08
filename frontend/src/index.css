@@ -108,20 +108,16 @@
   .md-container,.markdown-content {
     @apply text-foreground;
 
-    p {
-      @apply pb-2;
-    }
-
     h1 {
-      @apply text-2xl font-semibold mb-4;
+      @apply text-4xl font-semibold mb-4;
     }
 
     h2 {
-      @apply text-xl mb-4;
+      @apply text-2xl mb-4;
     }
 
     h3 {
-      @apply text-lg text-base font-medium mb-4;
+      @apply text-xl text-base font-medium mb-4;
     }
 
     ul {
