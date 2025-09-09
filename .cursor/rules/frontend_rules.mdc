@@ -5,6 +5,7 @@ alwaysApply: true
 
 - In frontends, we do not use emojis, we use icons from an icon library
 - We do not hardcode routes in SPAs. If we need routes, we properly add a router.
+- You do not useMemo
 
 # style rules
 
